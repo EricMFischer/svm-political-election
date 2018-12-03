@@ -34,9 +34,8 @@ import numpy as np
 import pickle
 from sklearn.svm import SVR
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split, StratifiedShuffleSplit, GridSearchCV
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import mean_squared_error, classification_report, precision_recall_fscore_support
-from skimage import exposure
 from skimage.feature import hog
 from skimage.io import imread_collection
 import matplotlib.pyplot as plt
@@ -68,19 +67,16 @@ def train_svr_trait_models(X_train, y_train):
     As to the wide range, unfortunately the optimal hyper-parameter values depends on the nature of the problem, and on the size of the dataset and cannot be determine a-priori. The reason for the large, apparently wasteful grid, is to make sure good values can be found automatically, with high probability.
     '''
     # param_grid = [{ # v5 (using)
-    #     'kernel': ['rbf'],
     #     'C': [2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2, 2**-1, 2**1, 2**2, 2**3, 2**4, 2**5, 2**6, 2**7, 2**8, 2**9, 2**10, 2**11, 2**12, 2**13, 2**14, 2**15],
     #     'gamma': [2**-15, 2**-14, 2**-13, 2**-12, 2**-11, 2**-10, 2**-9, 2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2, 2**-1, 2**1, 2**2, 2**3, 2**4, 2**5],
     #     'epsilon': [2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2, 2**-1]
     # }]
     # param_grid = [{ # v5 (fast)
-    #     'kernel': ['rbf'],
     #     'C': [2**-4, 2**-3, 2**-2, 2**-1, 2**1, 2**2, 2**3, 2**4, 2**5, 2**6, 2**7, 2**8, 2**9, 2**10, 2**11, 2**12, 2**13],
     #     'gamma': [2**-15, 2**-14, 2**-13, 2**-12, 2**-11, 2**-10, 2**-9, 2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2],
     #     'epsilon': [2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2]
     # }]
     param_grid = [{ # v7
-        'kernel': ['rbf'],
         'C': [2**-7, 2**-5, 2**-3, 2**-1, 2**1, 2**3, 2**5, 2**7, 2**9, 2**11, 2**13, 2**15],
         'gamma': [2**-17, 2**-15, 2**-13, 2**-11, 2**-9, 2**-7, 2**-5, 2**-3, 2**-1, 2**1, 2**3, 2**5],
         'epsilon': [2**-9, 2**-7, 2**-5, 2**-3, 2**-1]

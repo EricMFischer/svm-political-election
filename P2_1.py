@@ -68,29 +68,50 @@ def train_svc_trait_models(X_train, y_train, senators=False):
     print('Best score found on set:', clf.best_score_)
 
     if senators:
-        save_data(clf, 'svc_model_sen.pkl')
-        save_data(clf.best_params_, 'svc_params_sen.pkl')
-        save_data(clf.best_score_, 'svc_scores_sen.pkl')
+        save_data(clf, 'svc_model_sen_14_feats.pkl')
+        save_data(clf.best_params_, 'svc_params_sen_14_feats.pkl')
+        save_data(clf.best_score_, 'svc_scores_sen_14_feats.pkl')
     else:
-        save_data(clf, 'svc_model_gov.pkl')
-        save_data(clf.best_params_, 'svc_params_gov.pkl')
-        save_data(clf.best_score_, 'svc_scores_gov.pkl')
+        save_data(clf, 'svc_model_gov_14_feats.pkl')
+        save_data(clf.best_params_, 'svc_params_gov_14_feats.pkl')
+        save_data(clf.best_score_, 'svc_scores_gov_14_feats.pkl')
 
 def assign_binary_labels(real_values):
     return np.where(real_values >= 0, 1, -1)
 
-# ---------------------------------------- Plotting ----------------------------------------
+# ---------------------------------------- Predictions ----------------------------------------
 
 # acc = (tp + tn) / (p + n) -- i.e. true / total
 # precision (ppv) = tp / (tp + fp) -- i.e. true positive / all positive
 # i.e. ability of the classifier not to label as positive a negative sample
 def get_clf_accuracy_precision(X, y, senators=False):
-    clf = get_data('svc_model_sen.pkl') if senators else get_data('svc_model_gov.pkl')
+    clf = get_data('svc_model_sen_14_feats.pkl') if senators else get_data('svc_model_gov_14_feats.pkl')
     y_pred = clf.predict(X)
     # print(classification_report(y, y_pred))
     accuracy = len(np.where(y == y_pred)[0]) / len(y)
     precision = precision_recall_fscore_support(y, y_pred, average='weighted')[0]
     return accuracy, precision
+
+def get_svr_models_pred(X):
+    svr_models = get_data('svr_trait_models_v5_rich.pkl')
+    svr_preds = []
+    for i, clf in enumerate(svr_models):
+        svr_preds.append(clf.predict(X))
+    return np.array(svr_preds).T
+
+# svr_preds: (112, 14) for gov, (116, 14) for sen
+def get_election_features(svr_preds):
+    feats = []
+    it = iter(svr_preds)
+    for img_feats in it:
+        feats.append(img_feats - next(it)) # img_feats is feats of winner
+    neg_feats = []
+    it_2 = iter(svr_preds)
+    for img_feats in it_2:
+        neg_feats.append(next(it_2) - img_feats)
+    print('feats: ', feats)
+    print('neg_feats: ', neg_feats)
+    return feats + neg_feats
 
 # ---------------------------------------- HOG Features ----------------------------------------
 def get_hog_features(imgs):
@@ -123,18 +144,46 @@ def run_svc():
     # train_svc_trait_models(X_train_gov, y_train_gov)
     # train_acc, train_prec = get_clf_accuracy_precision(X_train_gov, y_train_gov)
     # test_acc, test_prec = get_clf_accuracy_precision(X_test_gov, y_test_gov)
-    # print('train acc and prec: ', train_acc, train_prec)
-    # print('test acc and prec: ', test_acc, test_prec)
+    # print('gov train acc and prec: ', train_acc, train_prec)
+    # print('gov test acc and prec: ', test_acc, test_prec)
 
     # for senators, train 14 SVC models with landmarks and hog feats
     # train_svc_trait_models(X_train_sen, y_train_sen, True)
     # train_acc, train_prec = get_clf_accuracy_precision(X_train_sen, y_train_sen, True)
     # test_acc, test_prec = get_clf_accuracy_precision(X_test_sen, y_test_sen, True)
-    # print('train acc and prec: ', train_acc, train_prec)
-    # print('test acc and prec: ', test_acc, test_prec)
+    # print('sen train acc and prec: ', train_acc, train_prec)
+    # print('sen test acc and prec: ', test_acc, test_prec)
 
     # ------------------------------------ SVM: Question 2.2 ------------------------------------
+    '''
+    (Then you can again train SVM classifiers using these new feature vectors. Compare the result with direct prediction in 2.1.)
+    Report: 1) Average accuracies on training and testing data. 2) Chosen model params.
+    3) Comparison to direct prediction by rich features (2.1).
+    '''
+    # apply 14 rich trait models to gov and sen images to get 14 real-valued features per image
+    gov_pred = get_svr_models_pred(gov_feats) # (112, 14) -- feat vector for img i: (i, :)
+    sen_pred = get_svr_models_pred(sen_feats) # (116, 14)
 
+    # represent 2 competing politicans as one feature vector F_AB = F_A - F_B
+    gov_elec_feats = get_election_features(gov_pred) # (56, 14)
+    sen_elec_feats = get_election_features(sen_pred) # (58, 14)
+
+    # train SVC models again with new features for governors and senators
+    outcomes = ([1] * 56) + ([-1] * 56)
+    X_train_gov, X_test_gov, y_train_gov, y_test_gov = train_test_split(gov_elec_feats, outcomes, test_size=0.2, random_state=42)
+    train_svc_trait_models(X_train_gov, y_train_gov)
+    train_acc, train_prec = get_clf_accuracy_precision(X_train_gov, y_train_gov)
+    test_acc, test_prec = get_clf_accuracy_precision(X_test_gov, y_test_gov)
+    print('gov train acc and prec: ', train_acc, train_prec)
+    print('gov test acc and prec: ', test_acc, test_prec)
+
+    outcomes = ([1] * 58) + ([-1] * 58)
+    X_train_sen, X_test_sen, y_train_sen, y_test_sen = train_test_split(sen_elec_feats, outcomes, test_size=0.2, random_state=42)
+    train_svc_trait_models(X_train_sen, y_train_sen, True)
+    train_acc, train_prec = get_clf_accuracy_precision(X_train_sen, y_train_sen, True)
+    test_acc, test_prec = get_clf_accuracy_precision(X_test_sen, y_test_sen, True)
+    print('sen train acc and prec: ', train_acc, train_prec)
+    print('sen test acc and prec: ', test_acc, test_prec)
 
 def main():
     run_svc()
