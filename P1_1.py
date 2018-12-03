@@ -89,8 +89,8 @@ def train_svr_trait_models(X_train, y_train):
     SVR_trait_params = []
     SVR_trait_scores = []
     for i in range(0,14):
-        X = X_train # (n, 160) -- landmark values for split training imgs
-        y = y_train[:, i] # (n,) -- 1 trait's values for split training imgs
+        X = X_train
+        y = y_train[:, i] # 1 trait's values for training imgs
 
         svr = SVR(kernel='rbf')
         print('Initiating grid search for SVR', i)

@@ -18,15 +18,13 @@ Report: 1) Average accuracies on training and testing data. 2) Chosen model para
 At a minimum, show the correlations between the facial attributes and the election outcomes. What are the facial attributes that lead to the electoral success?
 Report: Correlation coefficients of each of the facial attributes with the election outcomes.
 '''
-import os
 import scipy.io as sio
 import numpy as np
 import pickle
-from sklearn.svm import SVR
+from sklearn.svm import SVR, SVC
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split, StratifiedShuffleSplit, GridSearchCV
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import mean_squared_error, classification_report, precision_recall_fscore_support
-from skimage import exposure
 from skimage.feature import hog
 from skimage.io import imread_collection
 import matplotlib.pyplot as plt
@@ -50,204 +48,96 @@ def normalize(data):
     scaler.fit(data)
     return scaler.transform(data)
 
-def train_svr_trait_models(X_train, y_train):
+def train_svc_trait_models(X_train, y_train, senators=False):
     # param_grid = [{ # v5
     #     'kernel': ['rbf'],
     #     'C': [2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2, 2**-1, 2**1, 2**2, 2**3, 2**4, 2**5, 2**6, 2**7, 2**8, 2**9, 2**10, 2**11, 2**12, 2**13, 2**14, 2**15],
     #     'gamma': [2**-15, 2**-14, 2**-13, 2**-12, 2**-11, 2**-10, 2**-9, 2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2, 2**-1, 2**1, 2**2, 2**3, 2**4, 2**5],
     #     'epsilon': [2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2, 2**-1]
     # }]
-    # param_grid = [{ # v5 (fast)
-    #     'kernel': ['rbf'],
-    #     'C': [2**-4, 2**-3, 2**-2, 2**-1, 2**1, 2**2, 2**3, 2**4, 2**5, 2**6, 2**7, 2**8, 2**9, 2**10, 2**11, 2**12, 2**13],
-    #     'gamma': [2**-15, 2**-14, 2**-13, 2**-12, 2**-11, 2**-10, 2**-9, 2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2],
-    #     'epsilon': [2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2]
-    # }]
-    param_grid = [{ # v6 (fast)
-        'kernel': ['rbf'],
-        'C': [2**-2, 2**-1, 2**1, 2**2, 2**3, 2**4, 2**5, 2**6],
-        'gamma': [2**-15, 2**-14, 2**-13, 2**-12, 2**-11, 2**-10, 2**-9, 2**-8, 2**-7],
-        'epsilon': [2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2]
+    param_grid = [{ # v5 (fast)
+        'C': [2**-15, 2**-14, 2**-13, 2**-12, 2**-11, 2**-10, 2**-9, 2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2, 2**-1, 2**0, 2**1, 2**2, 2**3, 2**4, 2**5, 2**6, 2**7, 2**8, 2**9, 2**10, 2**11, 2**12, 2**13, 2**14, 2**15],
+        'gamma': [2**-15, 2**-14, 2**-13, 2**-12, 2**-11, 2**-10, 2**-9, 2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2, 2**-1, 2**0, 2**1, 2**2, 2**3, 2**4, 2**5, 2**6, 2**7, 2**8]
     }]
-    print('In HOG training')
-    # param_grid = [{ # v6
-    #     'kernel': ['rbf'],
-    #     'C': [2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2, 2**-1, 2**1, 2**2, 2**3, 2**4, 2**5, 2**6, 2**7, 2**8, 2**9, 2**10, 2**11, 2**12, 2**13, 2**14, 2**15],
-    #     'gamma': [2**-15, 2**-14, 2**-13, 2**-12, 2**-11, 2**-10, 2**-9, 2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2, 2**-1, 2**1, 2**2, 2**3, 2**4, 2**5],
-    #     'epsilon': [2**-12, 2**-11, 2**-10, 2**-9, 2**-8, 2**-7, 2**-6, 2**-5, 2**-4, 2**-3, 2**-2, 2**-1]
-    # }]
-    SVR_trait_models = []
-    SVR_trait_params = []
-    SVR_trait_scores = []
-    for i in range(0,14):
-        X = X_train # (n, 160) -- landmark values for split training imgs
-        y = y_train[:, i] # (n,) -- 1 trait's values for split training imgs
 
-        svr = SVR(kernel='rbf')
-        print('Initiating grid search for 1 SVR...')
-        clf = GridSearchCV(svr, param_grid, cv=5, scoring='neg_mean_squared_error', n_jobs=-1)
-        clf.fit(X, y)
+    svc = SVC(kernel='rbf')
+    clf = GridSearchCV(svc, param_grid, cv=5, n_jobs=-1)
+    clf.fit(X_train, y_train)
 
-        print('Best parameters found on set:', clf.best_params_)
-        print('Best score found on set:', clf.best_score_)
+    print('Best parameters found on set:', clf.best_params_)
+    print('Best score found on set:', clf.best_score_)
 
-        SVR_trait_models.append(clf)
-        SVR_trait_params.append(clf.best_params_)
-        SVR_trait_scores.append(clf.best_score_)
+    if senators:
+        save_data(clf, 'svc_model_sen.pkl')
+        save_data(clf.best_params_, 'svc_params_sen.pkl')
+        save_data(clf.best_score_, 'svc_scores_sen.pkl')
+    else:
+        save_data(clf, 'svc_model_gov.pkl')
+        save_data(clf.best_params_, 'svc_params_gov.pkl')
+        save_data(clf.best_score_, 'svc_scores_gov.pkl')
 
-    save_data(SVR_trait_models, 'svr_trait_models_v6_rich.pkl')
-    save_data(SVR_trait_params, 'svr_trait_params_v6_rich.pkl')
-    save_data(SVR_trait_scores, 'svr_trait_scores_v6_rich.pkl')
-
-def assign_binary_labels(y_true, y_pred):
-    mean = np.mean(y_true) # regression threshold based on mean
-    y_true = np.where(y_true >= mean, 1, -1)
-    y_pred = np.where(y_pred >= mean, 1, -1)
-    return y_true, y_pred
+def assign_binary_labels(real_values):
+    return np.where(real_values >= 0, 1, -1)
 
 # ---------------------------------------- Plotting ----------------------------------------
 
 # acc = (tp + tn) / (p + n) -- i.e. true / total
 # precision (ppv) = tp / (tp + fp) -- i.e. true positive / all positive
 # i.e. ability of the classifier not to label as positive a negative sample
-def get_clf_accuracy_precision(X, y, rich_feats=False):
-    svr_trait_models = get_data('svr_trait_models_v5.pkl')
-    if rich_feats:
-        svr_trait_models = get_data('svr_trait_models_v5_rich.pkl')
-    accuracy = []
-    precision = []
-    for i, clf in enumerate(svr_trait_models):
-        y_true, y_pred = y[:, i], clf.predict(X)
-        y_true, y_pred = assign_binary_labels(y_true, y_pred)
-        # print(classification_report(y_true, y_pred))
-
-        accuracy.append(len(np.where(y_true == y_pred)[0]) / len(y_true))
-        precision.append(precision_recall_fscore_support(y_true, y_pred, average='weighted')[0])
+def get_clf_accuracy_precision(X, y, senators=False):
+    clf = get_data('svc_model_sen.pkl') if senators else get_data('svc_model_gov.pkl')
+    y_pred = clf.predict(X)
+    # print(classification_report(y, y_pred))
+    accuracy = len(np.where(y == y_pred)[0]) / len(y)
+    precision = precision_recall_fscore_support(y, y_pred, average='weighted')[0]
     return accuracy, precision
 
-def disp_clf_accuracy_precision(X_train, y_train, X_test, y_test, X_train_r=None, y_train_r=None, X_test_r=None, y_test_r=None):
-    train_acc, train_prec = get_clf_accuracy_precision(X_train, y_train)
-    test_acc, test_prec = get_clf_accuracy_precision(X_test, y_test)
-    if X_train_r is not None:
-        train_acc_r, train_prec_r = get_clf_accuracy_precision(X_train_r, y_train_r, True)
-        test_acc_r, test_prec_r = get_clf_accuracy_precision(X_test_r, y_test_r, True)
-    # print('train_acc: ', np.mean(train_acc), train_acc)
-    # print('test_acc: ', np.mean(test_acc), test_acc)
-    # print('train_prec: ', np.mean(train_prec), train_prec)
-    # print('test_prec: ', np.mean(test_prec), test_prec)
-
-    X = list(range(1, 15))
-    plt.plot(X, train_acc, marker='o', color='navy', lw=1, label='Train Accuracy')
-    plt.plot(X, test_acc, marker='o', color='red', lw=1, label='Test Accuracy')
-    if X_train_r is not None:
-        plt.plot(X, train_acc_r, marker='o', color='blue', lw=1, label='Rich Train Accuracy')
-        plt.plot(X, test_acc_r, marker='o', color='orange', lw=1, label='Rich Test Accuracy')
-    plt.xlabel('Traits')
-    plt.ylabel('Classification Accuracy')
-    plt.legend()
-    plt.show()
-
-    plt.plot(X, train_prec, marker='o', color='navy', lw=1, label='Train Precision')
-    plt.plot(X, test_prec, marker='o', color='red', lw=1, label='Test Precision')
-    if X_train_r is not None:
-        plt.plot(X, train_prec_r, marker='o', color='blue', lw=1, label='Rich Train Precision')
-        plt.plot(X, test_prec_r, marker='o', color='orange', lw=1, label='Rich Test Precision')
-    plt.xlabel('Traits')
-    plt.ylabel('Classification Precision')
-    plt.legend()
-    plt.show()
-
-
-def get_test_mse(X_test, y_test, X_test_r=None, y_test_r=None):
-    svr_trait_models = get_data('svr_trait_models_v5.pkl')
-    if X_test_r is not None:
-        svr_trait_models = get_data('svr_trait_models_v5_rich.pkl')
-        X_test, y_test = X_test_r, y_test_r
-
-    test_mse = []
-    for i, clf in enumerate(svr_trait_models):
-        y_true, y_pred = y_test[:, i], clf.predict(X_test)
-        test_mse.append(mean_squared_error(y_true, y_pred))
-    return test_mse
-
-def disp_mse(X_test, y_test, X_test_r=None, y_test_r=None):
-    test_mse = get_test_mse(X_test, y_test)
-    train_mse = np.array(get_data('svr_trait_scores_v5.pkl')) * -1
-    if X_test_r is not None:
-        test_mse_r = get_test_mse(X_test, y_test, X_test_r, y_test_r)
-        train_mse_r = np.array(get_data('svr_trait_scores_v5_rich.pkl')) * -1
-    # print('train_mse: ', train_mse)
-    # print('test_mse: ', test_mse)
-
-    X = list(range(1, 15))
-    plt.plot(X, train_mse, marker='o', color='navy', lw=1, label='Train MSE')
-    plt.plot(X, test_mse, marker='o', color='red', lw=1, label='Test MSE')
-    if X_test_r is not None:
-        plt.plot(X, train_mse_r, marker='o', color='blue', lw=1, label='Rich Train MSE')
-        plt.plot(X, test_mse_r, marker='o', color='orange', lw=1, label='Rich Test MSE')
-    plt.xlabel('Traits')
-    plt.ylabel('Mean Square Error')
-    plt.legend()
-    plt.show()
-
 # ---------------------------------------- HOG Features ----------------------------------------
-'''
-Compute a Histogram of Oriented Gradients (HOG) by:
-1) (optional) global image normalization
-2) computing the gradient image in row and col
-3) computing gradient histograms
-4) normalizing across blocks
-5) flattening into a feature vector
-'''
-def get_hog_features():
-    if os.path.exists('./hog_features_fast.pkl'): # use for now
-        return get_data('hog_features_fast.pkl')
-
-    imgs = imread_collection('./img/*.jpg')
+def get_hog_features(imgs):
     hog_feats = []
     for i, img in enumerate(imgs):
         # pixels_per_cell default is (8,8), cells_per_block at its best
         # more orientations, or num_bins, would take longer to process
-        fd, hog_img = hog(img, orientations=8, pixels_per_cell=(16, 16), cells_per_block=(1, 1), visualize=True, multichannel=True, block_norm='L1')
-        # fd, hog_img = hog(img, orientations=8, pixels_per_cell=(32,32), cells_per_block=(1, 1),visualize=True, multichannel=True)
-        print('fd: ', i, np.shape(fd), np.max(fd), np.min(fd), type(fd))
+        fd, hog_img = hog(img, orientations=8, pixels_per_cell=(32, 32), cells_per_block=(1, 1), visualize=True, multichannel=True, block_norm='L1')
         hog_feats.append(fd)
-
     return normalize(hog_feats)
 
-def run_svr():
-    # ------------------------------------ SVM: Question 1.1 ------------------------------------
-    f = sio.loadmat('./train-anno.mat')
-    img_landmarks = normalize(f['face_landmark']) # 491 imgs x 160 landmark coordinates
-    img_traits = f['trait_annotation'] # 491 imgs x 14 traits
-    X_train, X_test, y_train, y_test = train_test_split(img_landmarks, img_traits, test_size=0.2, random_state=42)
+def run_svc():
+    f_gov, f_sen = sio.loadmat('./stat-gov.mat'), sio.loadmat('./stat-sen.mat')
+    gov_lm = normalize(f_gov['face_landmark']) # (112 governors, 160 lm coordinates)
+    sen_lm = normalize(f_sen['face_landmark']) # (116 senators, 160 lm coordinates)
+    gov_vote_diff, sen_vote_diff = f_gov['vote_diff'].flatten(), f_sen['vote_diff'].flatten()
+    gov_elec_outcomes = assign_binary_labels(gov_vote_diff) # (112, 1)
+    sen_elec_outcomes = assign_binary_labels(sen_vote_diff) # (116, 1)
 
-    # ------------------------------------ SVM: Question 1.2 ------------------------------------
-    hog_feats = get_hog_features()
-    rich_feats = np.concatenate([img_landmarks, hog_feats], axis=1)
-    X_train_r, X_test_r, y_train_r, y_test_r = train_test_split(rich_feats, img_traits, test_size=0.2, random_state=42)
+    gov_hog_feats = get_data('gov_hog_features.pkl') # (112, 1800)
+    gov_feats = np.concatenate([gov_lm, gov_hog_feats], axis=1) # (112, 1960)
+    X_train_gov, X_test_gov, y_train_gov, y_test_gov = train_test_split(gov_feats, gov_elec_outcomes, test_size=0.2, random_state=42)
+
+    sen_hog_feats = get_data('sen_hog_features.pkl') # (116, 1800)
+    sen_feats = np.concatenate([sen_lm, sen_hog_feats], axis=1) # (116, 1960)
+    X_train_sen, X_test_sen, y_train_sen, y_test_sen = train_test_split(sen_feats, sen_elec_outcomes, test_size=0.2, random_state=42)
 
     # ------------------------------------ SVM: Question 2.1 ------------------------------------
-    '''
-    Using the same features from section 1.2, train a classifier to classify the election outcome.
-    Report: Average accuracies on training and testing data. The chosen model parameters.
-    Perform k-fold cross-validation and report the average accuracy/precisions.
-    The point is to achieve an accuracy higher than chance.
-    For RANK SVM: Luyao tried C from 2^-15 to 2^15 and found that when C = 2^-4 the model gives the best testing prediction.
-    Other student found 2^2 for governers best and 2^6 for senators.
-    Training, test acc for governers: 0.70, 0.61
-    Training, test acc for senators: 0.89, 0.63
-    '''
+    # for governors, train 14 SVC models with landmarks and hog feats
+    # train_svc_trait_models(X_train_gov, y_train_gov)
+    # train_acc, train_prec = get_clf_accuracy_precision(X_train_gov, y_train_gov)
+    # test_acc, test_prec = get_clf_accuracy_precision(X_test_gov, y_test_gov)
+    # print('train acc and prec: ', train_acc, train_prec)
+    # print('test acc and prec: ', test_acc, test_prec)
 
-    # train 14 models with concatenated landmarks and hog features
-    # train_svr_trait_models(X_train_r, y_train_r)
+    # for senators, train 14 SVC models with landmarks and hog feats
+    # train_svc_trait_models(X_train_sen, y_train_sen, True)
+    # train_acc, train_prec = get_clf_accuracy_precision(X_train_sen, y_train_sen, True)
+    # test_acc, test_prec = get_clf_accuracy_precision(X_test_sen, y_test_sen, True)
+    # print('train acc and prec: ', train_acc, train_prec)
+    # print('test acc and prec: ', test_acc, test_prec)
 
-    disp_mse(X_test, y_test, X_test_r, y_test_r)
-    disp_clf_accuracy_precision(X_train, y_train, X_test, y_test, X_train_r, y_train_r, X_test_r, y_test_r)
+    # ------------------------------------ SVM: Question 2.2 ------------------------------------
 
 
 def main():
-    run_svr()
+    run_svc()
 
 if __name__ == "__main__":
     main()
