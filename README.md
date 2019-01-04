@@ -9,7 +9,7 @@ We exploit such low-level facial features and high-level perceptual to analyze e
 The goal of this task is to train binary SVMs (or SVRs) to predict the perceived traits (social
 attributes) from facial photographs. One may use the pre-computed facial keypoint locations
 and extract HoG (histogram of oriented gradient) features using the enclosed MATLAB
-function. You can further try your own favorite features.
+function.
 
 <b>1.1 Classification	by Landmarks</b><br/>
 The first step is to train 14 SVMs or SVRs only using the provided facial
@@ -26,8 +26,7 @@ parameter ("C") to control the trade-off between classification accuracy and reg
 
 
 <b>1.2 Classification	by Rich Features</b><br/>
-The next step is to extract richer visual features (appearance) from the images. Here, include the HoG (histogram of oriented gradient) features and can additionally choose
-whatever feature you want to try. Then repeat the earlier step to train and test models, but
+The next step is to extract richer visual features (appearance) from the images. Here, include the HoG (histogram of oriented gradient) features. Then repeat the earlier step to train and test models, but
 using augmented features: [landmark] and [new appearance feature]. One may concatenate two
 types of feature vectors into one. Compare the performance with the previous one.
 [Report: (1) Average accuracies and precisions on training and testing data for each of the 14
