@@ -7,57 +7,48 @@ We exploit such low-level facial features and high-level perceptual to analyze e
 
 <b>Part	1: Face Social Traits	Classification (or	Regression)</b><br/>
 The goal of this task is to train binary SVMs (or SVRs) to predict the perceived traits (social
-attributes) from facial photographs. You can use the pre-computed facial keypoint locations
+attributes) from facial photographs. One may use the pre-computed facial keypoint locations
 and extract HoG (histogram of oriented gradient) features using the enclosed MATLAB
 function. You can further try your own favorite features.
-[NOTE: We do not explicitly divide the image set into train/test sets. Therefore, you need to
-perform k-fold cross-validation and report the obtained accuracy.]
 
 <b>1.1 Classification	by Landmarks</b><br/>
-The first step of your assignment is to train 14 SVMs or SVRs only using the provided facial
+The first step is to train 14 SVMs or SVRs only using the provided facial
 landmarks as features. Write a script which reads the annotation file and the landmark file.
 Then train 14 models - one for each attribute dimension using the training examples.
-After training is done, you should apply the learned classifiers on the test examples and
+After training is done, apply the learned classifiers on the test examples and
 measure performance (classification accuracy) of the classifiers. Since the labels are
-imbalanced (different number of positive vs negative examples), you should report the average
+imbalanced (different number of positive vs negative examples), report the average
 precisions. Perform k-fold cross-validation to choose the LIBSVM parameters.
 [Report: (1) Average accuracies and precisions on training and testing data for each of the 14
 models. (2) The LIBSVM parameters of the 14 models.]
-[NOTE: When training SVM classifiers with LIBSVM or other libraries, you can specify a
-parameter ("C") to control the trade-off between classification accuracy and regularization. You
-should tune this parameter if you believe your classifiers are over-fitting.]
+[NOTE: When training SVM classifiers with LIBSVM or other libraries, one may specify a
+parameter ("C") to control the trade-off between classification accuracy and regularization. Tune this parameter if classifiers are over-fitting.]
 
 
 <b>1.2 Classification	by Rich Features</b><br/>
-The next step is to extract richer visual features (appearance) from the images. Here, you
-should include the HoG (histogram of oriented gradient) features and can additionally choose
-whatever feature you want to try. Then repeat the earlier step to train and test your models, but
-using augmented features: [landmark] and [new appearance feature]. You can concatenate two
+The next step is to extract richer visual features (appearance) from the images. Here, include the HoG (histogram of oriented gradient) features and can additionally choose
+whatever feature you want to try. Then repeat the earlier step to train and test models, but
+using augmented features: [landmark] and [new appearance feature]. One may concatenate two
 types of feature vectors into one. Compare the performance with the previous one.
 [Report: (1) Average accuracies and precisions on training and testing data for each of the 14
-models. (2) The LIBSVM parameters of the 14 models. (3) The names of the features you have
-used. (4) Comparison to classification by landmarks (1.1).]
+models. (2) The LIBSVM parameters of the 14 models. (3) The names of the features used. (4) Comparison to classification by landmarks (1.1).]
 
 <b>Part	2: Election	Outcome	Predictions</b><br/>
 <b>2.1 Direct	Prediction by Rich Features</b><br/>
-Using the same features that you developed in the section 1.2, train a classifier to classify the
+Using the same features developed in the section 1.2, train a classifier to classify the
 election outcome.
 [Report: (1) Average accuracies on training and testing data. (2) The chosen model
 parameters.]
-[NOTE: We do not divide the second image set into a train and a test set. Perform k-fold or
-leave-one-out cross-validation and report the average accuracy / precisions. The point is to
-achieve an accuracy higher than chance.]
 
 <b>2.2 Prediction	by	Face	Social	Traits</b><br/>
 We finally consider a two-layer-model in which we first project each facial image in a
 14-dimensional attribute space and second perform binary classification of the election outcome
-in the obtained feature space. Specifically, you need to apply the classifiers that you trained in
-the section 1.2 to each politician's image and collect all the outputs of 14 classifiers (use
-real-valued confidence instead of label). Treat these outputs in 14 categories as a new feature
+in the obtained feature space. Specifically, apply the classifiers trained in section 1.2 to each politician's image and collect all the outputs of 14 classifiers (using
+real-valued confidence instead of a label). Treat these outputs in 14 categories as a new feature
 vector that represents the image.
 Since each race comprises two candidates, a simple trick is to define a pair of politicians as one
 data point by subtracting a trait feature vector A from another vector B, and train a binary
-classifier. Do not include a bias term. Then you can again train SVM classifiers
+classifier. Do not include a bias term. Then one can again train SVM classifiers
 using these new feature vectors. Compare the result with direct prediction in 2.1.
 [Report: (1) Average accuracies on training and testing data. (2) The chosen model parameters.
 (3) Comparison to direct prediction by rich features (2.1).]
